@@ -205,6 +205,12 @@ main {
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
+.status-tag.inactive {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 .status-tag.broker {
   background: rgba(129, 140, 248, 0.15);
   color: #a5b4fc;

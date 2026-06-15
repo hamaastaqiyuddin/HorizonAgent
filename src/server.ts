@@ -129,6 +129,10 @@ mcpEvents.on('memory', (memory) => {
   broadcast('memory', memory);
 });
 
+mcpEvents.on('heartbeat', (hb) => {
+  broadcast('heartbeat', hb);
+});
+
 mcpEvents.on('token_stats', (stats) => {
   // Broadcast updated accumulated stats and new log
   try {

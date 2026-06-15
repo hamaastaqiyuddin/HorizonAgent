@@ -22,6 +22,9 @@ const nodeAntigravity = document.getElementById('node-antigravity');
 const nodeClaude = document.getElementById('node-claude');
 const nodeHorizon = document.getElementById('node-horizon');
 
+const elStatusAntigravity = document.getElementById('status-antigravity');
+const elStatusClaude = document.getElementById('status-claude');
+
 const pulseLeft = document.getElementById('pulse-left');
 const pulseRight = document.getElementById('pulse-right');
 
@@ -29,6 +32,7 @@ const pulseRight = document.getElementById('pulse-right');
 let messages = [];
 let tasks = [];
 let memories = {};
+let heartbeats = { antigravity: null, claude: null };
 
 // ----------------------------------------------------
 // UI Renderers
@@ -160,6 +164,33 @@ function updateStats(statsData) {
   }
 }
 
+function updateAgentStatusDisplay() {
+  const now = new Date();
+  
+  // Consider an agent "Connected" if their last heartbeat was within 2 minutes (120,000ms)
+  const isAntigravityActive = heartbeats.antigravity && (now - new Date(heartbeats.antigravity)) < 120000;
+  const isClaudeActive = heartbeats.claude && (now - new Date(heartbeats.claude)) < 120000;
+
+  if (isAntigravityActive) {
+    elStatusAntigravity.textContent = 'Connected';
+    elStatusAntigravity.className = 'status-tag active';
+  } else {
+    elStatusAntigravity.textContent = 'Offline';
+    elStatusAntigravity.className = 'status-tag inactive';
+  }
+
+  if (isClaudeActive) {
+    elStatusClaude.textContent = 'Connected';
+    elStatusClaude.className = 'status-tag active';
+  } else {
+    elStatusClaude.textContent = 'Offline';
+    elStatusClaude.className = 'status-tag inactive';
+  }
+}
+
+// Run status checker every 10 seconds
+setInterval(updateAgentStatusDisplay, 10000);
+
 // ----------------------------------------------------
 // Animation Trigger Helpers
 // ----------------------------------------------------
@@ -217,6 +248,12 @@ async function fetchInitialState() {
     const memoryArr = await resMemory.json();
     memories = {};
     memoryArr.forEach(m => { memories[m.key] = m.value; });
+    
+    // Read heartbeats from memory
+    heartbeats.antigravity = memories['heartbeat_antigravity'] || null;
+    heartbeats.claude = memories['heartbeat_claude'] || null;
+    updateAgentStatusDisplay();
+
     renderMemory();
 
     const resStats = await fetch(`${API_BASE}/api/stats`);
@@ -281,7 +318,19 @@ function connectWebSocket() {
 
       case 'memory':
         memories[data.key] = data.value;
+        if (data.key === 'heartbeat_antigravity') {
+          heartbeats.antigravity = data.value;
+          updateAgentStatusDisplay();
+        } else if (data.key === 'heartbeat_claude') {
+          heartbeats.claude = data.value;
+          updateAgentStatusDisplay();
+        }
         renderMemory();
+        break;
+
+      case 'heartbeat':
+        heartbeats[data.agent] = data.timestamp;
+        updateAgentStatusDisplay();
         break;
 
       case 'token_stats':

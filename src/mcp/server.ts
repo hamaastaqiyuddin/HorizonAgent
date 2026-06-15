@@ -243,10 +243,16 @@ export function createMCPServer(): Server {
     };
   });
 
+  // Helper to update agent heartbeat
+  function updateHeartbeat(agent: 'antigravity' | 'claude') {
+    const now = new Date().toISOString();
+    setMemoryValue(`heartbeat_${agent}`, now);
+    mcpEvents.emit('heartbeat', { agent, timestamp: now });
+  }
+
   // Handle tool calls
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
-    const callerAgent = name.includes('antigravity') ? 'claude' : 'antigravity'; // Simplified auto-inference or read context if possible
 
     try {
       switch (name) {
@@ -254,6 +260,7 @@ export function createMCPServer(): Server {
         case 'send_message': {
           const { to_agent, content, reply_to_id } = args as any;
           const sender = to_agent === 'claude' ? 'antigravity' : 'claude';
+          updateHeartbeat(sender);
           const msg: Omit<Message, 'read'> = {
             id: Math.random().toString(36).substring(2, 11),
             sender,
@@ -271,6 +278,7 @@ export function createMCPServer(): Server {
 
         case 'get_unread_messages': {
           const { agent } = args as any;
+          updateHeartbeat(agent);
           const messages = getUnreadMessages(agent);
           return {
             content: [{ type: 'text', text: JSON.stringify(messages, null, 2) }],
@@ -289,6 +297,8 @@ export function createMCPServer(): Server {
         // --- Task Management ---
         case 'create_task': {
           const { assignee, title, description, context_files } = args as any;
+          const creator = assignee === 'claude' ? 'antigravity' : 'claude';
+          updateHeartbeat(creator);
           const task: Task = {
             id: 'task_' + Math.random().toString(36).substring(2, 9),
             title,
@@ -309,6 +319,12 @@ export function createMCPServer(): Server {
 
         case 'update_task_status': {
           const { task_id, status, output } = args as any;
+          // Find task to identify assignee
+          const allTasks = listTasks();
+          const targetTask = allTasks.find(t => t.id === task_id);
+          if (targetTask) {
+            updateHeartbeat(targetTask.assignee);
+          }
           updateTaskStatus(task_id, status, output);
           mcpEvents.emit('task_update', { id: task_id, status, output, updatedAt: new Date().toISOString() });
           return {
@@ -318,6 +334,9 @@ export function createMCPServer(): Server {
 
         case 'list_tasks': {
           const { assignee, status } = args as any;
+          if (assignee) {
+            updateHeartbeat(assignee);
+          }
           const tasks = listTasks(assignee, status);
           return {
             content: [{ type: 'text', text: JSON.stringify(tasks, null, 2) }],
@@ -351,13 +370,9 @@ export function createMCPServer(): Server {
           let recommendedAgent: 'claude' | 'antigravity' = 'claude';
           let reason = '';
           
-          // Claude pricing: Input $3/M, Output $15/M
-          // Gemini 1.5 Pro pricing: Input $1.25/M, Output $5/M (Flash: Input $0.075/M, Output $0.30/M)
-          // Average token length = 4 characters
           const estimatedTokens = Math.ceil(context_size_chars / 4);
           
           if (estimatedTokens > 120000) {
-            // Claude Desktop context limit or performance degrades, Gemini has huge 2M context
             recommendedAgent = 'antigravity';
             reason = `Context size is extremely large (${estimatedTokens.toLocaleString()} tokens). Gemini is recommended due to its native 2M token context window and cost-efficiency.`;
           } else if (lowerPrompt.includes('refactor') || lowerPrompt.includes('algorithm') || lowerPrompt.includes('debug complex') || lowerPrompt.includes('optimize logic')) {
@@ -371,9 +386,9 @@ export function createMCPServer(): Server {
             reason = 'General programming task of moderate size; Claude 3.5 Sonnet is recommended for default coding tasks.';
           }
 
-          // Simple cost estimates (per 1K tokens)
-          const claudeCost = (estimatedTokens / 1000) * 0.003; // Input
-          const geminiCost = (estimatedTokens / 1000) * 0.00125; // Pro Input
+          // Simple cost estimates
+          const claudeCost = (estimatedTokens / 1000) * 0.003;
+          const geminiCost = (estimatedTokens / 1000) * 0.00125;
           const savings = Math.max(0, claudeCost - geminiCost);
 
           const result = {
@@ -392,13 +407,12 @@ export function createMCPServer(): Server {
 
         case 'log_token_usage': {
           const { agent, prompt_tokens, completion_tokens } = args as any;
+          updateHeartbeat(agent);
           
-          // Simple pricing estimate
           let estimatedCost = 0;
           if (agent === 'claude') {
             estimatedCost = (prompt_tokens / 1_000_000) * 3.0 + (completion_tokens / 1_000_000) * 15.0;
           } else {
-            // Gemini 1.5 Pro pricing
             estimatedCost = (prompt_tokens / 1_000_000) * 1.25 + (completion_tokens / 1_000_000) * 5.0;
           }
 
