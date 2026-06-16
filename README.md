@@ -113,7 +113,7 @@ hz load
 
 If HHP has supercharged your workflow, saved you massive API token costs, and made your development life easier, consider supporting our open-source journey! Your support helps us keep this protocol completely free, optimized, and independent for developers worldwide.
 
-* **Support on PayPal:** [Donate to hamaastaq on PayPal](https://paypal.me/hamaastaq)
+* **Support on PayPal:** [Donate to hamaastaqiy on PayPal](https://paypal.me/hamaastaqiy)
 
 ---
 
