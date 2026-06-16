@@ -120,6 +120,9 @@ If HHP has supercharged your workflow, saved you massive API token costs, and ma
 
 * **Support on PayPal:** [Donate to hamaastaqiy on PayPal](https://paypal.me/hamaastaqiy)
 
+### 📲 Connect with the Author
+* **Instagram:** [@hamaastaqiyuddin](https://www.instagram.com/hamaastaqiyuddin)
+
 ---
 
 ## 📄 License
