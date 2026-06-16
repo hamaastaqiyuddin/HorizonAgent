@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Horizon Handoff Protocol Logo" width="300" />
+</p>
+
 # Horizon Handoff Protocol (HHP)
 
 > **Unlock the True Power of Multi-Agent Programming Across Any Platform!** 🚀
