@@ -167,9 +167,9 @@ function updateStats(statsData) {
 function updateAgentStatusDisplay() {
   const now = new Date();
   
-  // Consider an agent "Connected" if their last heartbeat was within 2 minutes (120,000ms)
-  const isAntigravityActive = heartbeats.antigravity && (now - new Date(heartbeats.antigravity)) < 120000;
-  const isClaudeActive = heartbeats.claude && (now - new Date(heartbeats.claude)) < 120000;
+  // Consider an agent "Connected" if their last heartbeat was within 15 minutes (900,000ms)
+  const isAntigravityActive = heartbeats.antigravity && (now - new Date(heartbeats.antigravity)) < 900000;
+  const isClaudeActive = heartbeats.claude && (now - new Date(heartbeats.claude)) < 900000;
 
   if (isAntigravityActive) {
     elStatusAntigravity.textContent = 'Connected';
