@@ -1,98 +1,120 @@
-# Horizon Agent: Collaborative Multi-Agent Bridge
+# Horizon Handoff Protocol (HHP)
 
-Horizon Agent is a local-first Model Context Protocol (MCP) server and orchestrator designed to bridge the gap between **Google AI (Gemini via Antigravity)** and **Anthropic Claude (via Claude Desktop)**. It allows them to communicate directly, share variables and files, delegate tasks, and log token usage to maximize cost savings and performance.
-
----
-
-## Architecture Overview
-
-```
-                   +-------------------+
-                   |   Dashboard UI    |
-                   | (localhost:10800) |
-                   +---------+---------+
-                             ^
-                             | (WebSockets)
-                             v
-+-------------+      +-------+-------+      +---------------+
-| Antigravity | <==> | Horizon Server| <==> | Claude Desktop|
-|  (Gemini)   | (MCP) | (Node/SQLite) | (MCP)|   (Claude)    |
-+-------------+      +---------------+      +---------------+
-                             |
-                             +---> Shared Workspace (`/shared-workspace`)
-```
-
-*   **MCP Tools:** Exposes functions for sending messages, creating tasks, managing shared variables, counting tokens, and routing recommendations.
-*   **Local Web Server:** Express app hosting a dark-themed glassmorphism dashboard (port `10800`).
-*   **Local DB:** SQLite DB (`horizon-agent.db`) tracking active states.
+A stateless, local-first, Git-Ops based handoff protocol and Model Context Protocol (MCP) server designed for seamless, token-efficient task handover and state synchronization between independent AI agents (e.g., Claude Desktop, Cursor, Antigravity, and Terminal Agents).
 
 ---
 
-## Getting Started
+## 🌅 Why HHP?
 
-### 1. Build the Server
-Ensure you have Node.js (v18+) installed. Install dependencies and build the TypeScript files:
+Multi-agent programming is the future, but it has two massive limitations today:
+1. **Walled Gardens:** LLM providers (Anthropic, Google, OpenAI) do not communicate with each other. If you run out of tokens in Claude and want to switch to Gemini, you must explain the task from scratch, copy-paste your code changes, and manually reconstruct your workspace.
+2. **Context Bloat (Token Waste):** Continuous background polling or passing entire raw chat histories consumes tens of thousands of tokens per minute, leading to massive API bills and hit rate-limits.
+
+**HHP solves this.** It acts as a standardized "USB-C" port for AI agent memory. When one agent finishes a session, it packages its progress into a compressed, standardized handoff ticket. The next agent reads this ticket and resumes work instantly in 1 second.
+
+---
+
+## ✨ Features
+
+* **Zero-Daemon / Stateless:** No running database, server ports, or idle processes. It only runs when called, consuming **0 idle CPU** and **0 idle tokens**.
+* **Cognitive Context Compression:** Automatically pulls the active git diff, files modified, and compiler errors. It packages them into a highly compact markdown ticket (`.horizon/handoff.md`), saving up to **90% on input tokens** for the receiving agent.
+* **Git-Ops Safety:** Integrates with your repository structure natively. Handoff states can be tracked, versioned, and branched using standard Git.
+* **IDE & Model Agnostic:** Works as a command-line interface (CLI) for humans and an **MCP Server** for any LLM-enabled tool (such as Claude Desktop, Windsurf, or VS Code plugins).
+
+---
+
+## 🚀 How It Works
+
+```
+[Claude Desktop] ──► `hz save` ──► [.horizon/state.json] ──► `hz load` ──► [Antigravity IDE]
+ (Sonnet 3.5)                     (Handoff Ticket & Diff)                (Gemini Pro)
+```
+
+1. **Save:** Claude finishes writing a module or runs out of tokens. It runs the `save_handoff` tool (or you run `hz save`).
+2. **State:** A `.horizon/state.json` (metadata) and a human-readable `.horizon/handoff.md` are generated locally in your project.
+3. **Load:** You open Antigravity (or another IDE chat panel) and type `resume`. The agent calls `load_handoff` (or you run `hz load`) to inherit the exact sisa-tugas checklist, files modified, and target goals.
+
+---
+
+## 📥 Installation
+
+Install the CLI tool globally:
 ```bash
-npm install
-npm run build
+npm install -g .
 ```
+*(Or run directly via `npx` if published to npm).*
 
-### 2. Configure Claude Desktop
-Add Horizon Agent to your local Claude Desktop config. Open the configuration file (usually located at `~/.config/Claude/claude_desktop_config.json` on Linux) and add the following entry under `mcpServers`:
+### 🛠️ Setting up MCP
 
+To let your AI agents call HHP automatically, add the server to your MCP configurations.
+
+#### For Claude Desktop (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
-    "horizon-agent": {
+    "horizon-handoff": {
       "command": "node",
-      "args": [
-        "/home/ultimatezee/.gemini/antigravity/scratch/horizon-agent/dist/server.js"
-      ],
-      "env": {
-        "PORT": "10800"
-      }
+      "args": ["/absolute/path/to/horizon-agent/dist/mcp/server.js"]
     }
   }
 }
 ```
-*Restart Claude Desktop after saving the configuration.*
 
-### 3. Configure Antigravity / Gemini Agent
-Make sure your Gemini agent has the `horizon-agent` MCP server enabled. It will connect using stdio, running the same server executable.
-
----
-
-## Exposed MCP Tools
-
-### Agent Messaging
-*   `send_message(to_agent, content, reply_to_id?)`: Send a direct message to the other agent.
-*   `get_unread_messages(agent)`: Retrieve new messages waiting for this agent.
-*   `mark_message_read(message_id)`: Mark a message as read.
-
-### Task Delegation
-*   `create_task(assignee, title, description, context_files?)`: Delegate a sub-task.
-*   `update_task_status(task_id, status, output?)`: Mark a task as `in_progress`, `completed`, or `failed` with results.
-*   `list_tasks(assignee?, status?)`: Retrieve tasks list.
-
-### Shared Memory & Files
-*   `set_memory_value(key, value)`: Write a shared variable key-value pair.
-*   `get_memory_value(key)`: Retrieve a shared variable.
-*   `shared-workspace/` directory: Write and reference files in this directory to share context.
-
-### Optimization
-*   `recommend_routing(prompt, context_size_chars)`: Returns recommendation (`claude` or `antigravity`) and estimated cost savings based on prompt style and context size.
-*   `log_token_usage(agent, prompt_tokens, completion_tokens)`: Records token consumption and calculates costs.
-
----
-
-## Visualizing Collaborations
-
-Start the daemon directly to inspect or view the GUI:
-```bash
-npm run dev
+#### For Antigravity (`mcp_config.json`):
+```json
+{
+  "mcpServers": {
+    "horizon-handoff": {
+      "command": "node",
+      "args": ["/absolute/path/to/horizon-agent/dist/mcp/server.js"]
+    }
+  }
+}
 ```
-Open **`http://localhost:10800`** in your browser. The beautiful Dashboard UI shows:
-1.  **Topology map:** Pulse animations when messages flow between agents.
-2.  **Live Log Feed:** Real-time messages exchanged.
-3.  **Task Board:** Kanban view of active/completed delegated tasks.
-4.  **Token & Savings Analytics:** Real-time cost comparisons and token metrics.
+
+---
+
+## 💻 CLI Commands
+
+### 1. `hz init`
+Initialize the `.horizon/` environment in your current project folder.
+```bash
+hz init
+```
+
+### 2. `hz save`
+Capture the current workspace state (git status, diff, modified files) and write a handoff ticket.
+```bash
+hz save "Impl parsing logic" --remaining "Write test cases, debug router" --agent "antigravity"
+```
+* **Options:**
+  * `-t, --title <title>`: Set/override task title.
+  * `-d, --desc <desc>`: Set/override task description.
+  * `-r, --remaining <items>`: Comma-separated sisa tugas.
+  * `-a, --agent <agent>`: Target assignee (claude / antigravity / human / any).
+  * `-e, --errors <log>`: Paste compiler/linter error messages to let the next agent debug.
+
+### 3. `hz status`
+Show the current handoff status, assignee, modified files, and sisa-tugas checklist in your terminal.
+```bash
+hz status
+```
+
+### 4. `hz load`
+Print the raw JSON state payload (primarily used internally by MCP agents to ingest context).
+```bash
+hz load
+```
+
+---
+
+## 💛 Support & Donations
+
+If this protocol has saved you thousands of tokens and hours of manual handoffs, consider supporting its open-source development!
+
+* **Donate via PayPal:** [Support on PayPal](https://paypal.me/hamaastaqiyuddin)
+
+---
+
+## 📄 License
+MIT License. Free to use, modify, and distribute for all developers globally.

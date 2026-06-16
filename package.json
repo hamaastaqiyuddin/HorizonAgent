@@ -1,22 +1,21 @@
 {
-  "name": "horizon-agent",
+  "name": "horizon-handoff-protocol",
   "version": "1.0.0",
-  "description": "Collaborative Multi-Agent Bridge between Google AI and Claude via MCP",
-  "main": "dist/server.js",
+  "description": "Stateless Git-Ops Handoff Protocol & MCP Server between AI Agents (Claude & Gemini)",
+  "main": "dist/mcp/server.js",
+  "bin": {
+    "hz": "./dist/cli/hz.js"
+  },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts"
+    "start": "node dist/mcp/server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
-    "express": "^4.21.2",
-    "ws": "^8.18.0"
+    "commander": "^11.1.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
-    "@types/ws": "^8.5.13",
     "typescript": "^5.7.2",
     "ts-node": "^10.9.2"
   }
