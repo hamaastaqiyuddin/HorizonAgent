@@ -11,6 +11,7 @@ import {
   getAccumulatedStats,
   getTokenLogs
 } from './db/sqlite';
+import { startRunner } from './agent/runner';
 
 // CRITICAL: Prevent writing general server logs to stdout.
 // StdioServerTransport uses stdout/stdin. Writing to stdout corrupts JSON-RPC.
@@ -162,6 +163,8 @@ server.on('error', (err: any) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   log(`Local Dashboard Web GUI available at http://127.0.0.1:${PORT}`);
+  // Start the autonomous task runner only in the master process (which owns the dashboard port)
+  startRunner();
 });
 
 // Handle graceful shutdown
